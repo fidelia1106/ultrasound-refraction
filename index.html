@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>超声波折射教学演示</title>
+<title>超声波斜入射：折射、反射与波型转换</title>
 
 <style>
   :root{
@@ -14,30 +14,33 @@
     --text:#1b2333;
     --muted:#5b6a86;
 
-    /* 左图介质浅色（清晰区分） */
-    --m1:#d9e6ff;  /* 介质1浅蓝 */
-    --m2:#f6dfbf;  /* 介质2米黄 */
+    /* 介质颜色 */
+    --m1:#d9e6ff;
+    --m2:#f6dfbf;
 
-    /* 右侧分组强调 */
     --m1tint:#eef4ff;
     --m2tint:#fff4e3;
     --m1line:#2e56b8;
     --m2line:#c27a00;
 
     /* 波线色 */
-    --incL:#0a2a78; /* 入射纵波（深蓝） */
-    --incS:#d8362a; /* 入射横波（红） */
-    --L:#f39a1c;    /* 折射纵波L（橙） */
-    --S:#d8362a;    /* 折射横波S（红） */
+    --incL:#0a2a78;
+    --incS:#d8362a;
+    --L:#f39a1c;
+    --S:#d8362a;
+
+    /* 反射（略亮） */
+    --rL:#2d58ff;
+    --rS:#ff3b30;
 
     /* 法线 */
     --normal:#2e56b8;
 
     --shadow: 0 14px 34px rgba(18,34,80,.10);
+    --interfaceY: 52%;
   }
 
   *{ box-sizing:border-box; }
-
   body{
     margin:0;
     font-family:"Microsoft YaHei","Segoe UI",sans-serif;
@@ -49,35 +52,49 @@
     height:56px;
     display:flex;
     align-items:center;
-    justify-content:space-between;
+    justify-content:center;
     padding:0 18px;
     border-bottom:1px solid var(--border);
     background:linear-gradient(90deg,#f7f9ff,#ffffff);
   }
   header .title{
-    font-size:18px;
-    font-weight:700;
-    letter-spacing:.4px;
+    font-size:20px;
+    font-weight:800;
+    letter-spacing:.2px;
+    text-align:center;
+  }
+
+  /* ===== 下标统一样式（关键：不让下标太小）===== */
+  sub.sub{
+    font-size:0.82em;           /* 下标相对主字符：保持清晰 */
+    line-height:0;
+    vertical-align:-0.28em;     /* 下沉一点但不过分 */
+    font-weight:900;
+    letter-spacing:0;
   }
 
   main{
     display:flex;
-    height:calc(100vh - 56px);
-    min-height:680px;
+    gap:14px;
+    padding:14px;
+    align-items:stretch;
+    min-height:calc(100dvh - 56px);
+    flex-wrap:wrap;
   }
 
   .left{
-    flex:3;
+    flex: 1 1 520px;
     display:flex;
-    align-items:center;
+    align-items:stretch;
     justify-content:center;
-    padding:18px;
-    background:#ffffff;
+    min-width:320px;
   }
 
   .canvasWrap{
-    width:min(920px, 100%);
-    aspect-ratio: 4 / 3;
+    width:100%;
+    max-width: 1200px;
+    height: calc(100dvh - 56px - 28px);
+    max-height: 860px;
     border-radius:16px;
     overflow:hidden;
     border:1px solid var(--border);
@@ -85,15 +102,76 @@
     background:#fff;
     position:relative;
   }
-  canvas{ width:100%; height:100%; display:block; }
+  canvas{ width:100%; height:100%; display:block; touch-action:none; }
 
-  .right{
-    flex:2;
+  /* ===== 画布内 HUD ===== */
+  .hud{
+    position:absolute;
+    z-index:10;
+    pointer-events:auto;
+    background:rgba(255,255,255,.92);
+    border:1px solid rgba(227,232,245,.95);
+    border-radius:12px;
+    box-shadow: 0 10px 22px rgba(18,34,80,.10);
+    backdrop-filter: blur(6px);
+  }
+  .hud .row{ margin:6px 0; grid-template-columns: 78px 1fr; }
+  .hud label{ font-size:12px; }
+  .hud select, .hud input[type="number"]{ height:32px; border-radius:10px; }
+
+  .hudHead{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    padding:10px 12px;
+    border-bottom:1px solid rgba(227,232,245,.95);
+  }
+  .hudHead .name{ font-weight:900; font-size:12px; color:#1f2e54; }
+  .hudBody{ padding:10px 12px; }
+
+  .hudActions{
+    position:absolute;
+    right:12px;
+    top:12px;
+    z-index:11;
+    display:flex;
+    gap:8px;
+  }
+  .btn{
+    height:34px;
+    padding:0 12px;
+    border-radius:999px;
+    border:1px solid rgba(227,232,245,.95);
+    background:rgba(255,255,255,.92);
+    color:#1b2333;
+    font-weight:800;
+    font-size:12px;
+    cursor:pointer;
+    box-shadow: 0 10px 22px rgba(18,34,80,.10);
+  }
+  .btn:active{ transform: translateY(1px); }
+
+  /* ===== 抽屉面板 ===== */
+  .drawer{
+    position:fixed;
+    right:12px;
+    top:68px;
+    bottom:12px;
+    width:min(440px, calc(100vw - 24px));
     background:var(--panel);
-    border-left:1px solid var(--border);
+    border:1px solid var(--border);
+    border-radius:16px;
+    box-shadow: var(--shadow);
     padding:14px;
     overflow:auto;
+    z-index:100;
+    display:none;
   }
+  .drawer.open{ display:block; }
+  .drawerTop{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; }
+  .drawerTop .title{ font-weight:900; color:#1f2e54; font-size:13px; }
+  .drawerClose{ height:34px; padding:0 12px; border-radius:999px; border:1px solid var(--border); background:#fff; cursor:pointer; font-weight:800; }
 
   .grid{ display:grid; gap:12px; }
 
@@ -104,52 +182,10 @@
     padding:12px;
     box-shadow: 0 10px 22px rgba(18,34,80,.06);
   }
-
   .card h3{
     margin:0 0 10px 0;
-    font-size:14px;
-    color:#2347a8;
-  }
-
-  .split2{
-    display:grid;
-    grid-template-columns: 1fr 1fr;
-    gap:12px;
-  }
-
-  .medium{
-    border-radius:14px;
-    border:1px solid var(--border);
-    padding:12px;
-    background:#fff;
-  }
-  .medium.m1{
-    background:linear-gradient(180deg, var(--m1tint), #ffffff 70%);
-    border-left:6px solid var(--m1line);
-  }
-  .medium.m2{
-    background:linear-gradient(180deg, var(--m2tint), #ffffff 70%);
-    border-left:6px solid var(--m2line);
-  }
-  .mh{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    margin-bottom:10px;
-  }
-  .mh .name{
-    font-weight:800;
     font-size:13px;
-    color:#1f2e54;
-  }
-  .badge{
-    font-size:11px;
-    padding:3px 8px;
-    border-radius:999px;
-    border:1px solid var(--border);
-    color:var(--muted);
-    background:#fff;
-    white-space:nowrap;
+    color:#2347a8;
   }
 
   .row{
@@ -171,10 +207,7 @@
     font-size:13px;
     width:100%;
   }
-  input[type="range"]{
-    width:100%;
-    accent-color:#2b63ff;
-  }
+  select:disabled, input:disabled{ opacity:.6; }
 
   .kv{
     display:grid;
@@ -182,6 +215,10 @@
     gap:10px;
     margin-top:8px;
   }
+  @media (max-width: 520px){
+    .kv{ grid-template-columns: 1fr; }
+  }
+
   .box{
     border:1px dashed #dfe6fb;
     border-radius:12px;
@@ -197,30 +234,25 @@
     display:flex;
     align-items:baseline;
     gap:8px;
+    flex-wrap:wrap;
   }
   .unit{ font-size:12px; color:var(--muted); font-weight:600; }
 
-  .thetaRow{
-    display:grid;
-    grid-template-columns: 1fr 110px;
-    gap:10px;
-    align-items:center;
+  .hint{
+    margin-top:8px;
+    font-size:12px;
+    color:var(--muted);
+    line-height:1.4;
   }
 
-  .formulaWrap{
-    border-radius:14px;
-    border:1px solid #dde6ff;
-    background:#ffffff;
-    padding:12px;
-  }
   .bigEq{
-    font-size:20px;
+    font-size:18px;
     font-weight:900;
     color:#111a2e;
     line-height:1.35;
     display:flex;
     flex-wrap:wrap;
-    gap:12px;
+    gap:10px;
     align-items:center;
   }
   .frac{
@@ -240,7 +272,7 @@
     margin:1px 0;
   }
   .frac .bot{ padding-top:1px; }
-  .eq{ font-size:20px; font-weight:900; margin:0 2px; }
+  .eq{ font-size:18px; font-weight:900; margin:0 2px; }
 
   .legend{
     margin-top:10px;
@@ -259,772 +291,443 @@
     border-radius:999px;
     background:#fff;
   }
-  .legend .tag1{
-    background: rgba(10,42,120,0.08);
-    border-color: rgba(10,42,120,0.25);
-    color:#0a2a78;
-  }
-  .legend .tag2{
-    background: rgba(216,54,42,0.08);
-    border-color: rgba(216,54,42,0.25);
-    color:#d8362a;
-  }
-  .legend .tag3{
-    background: rgba(243,154,28,0.12);
-    border-color: rgba(243,154,28,0.35);
-    color:#f39a1c;
-  }
 
-  .resultGrid{
-    display:grid;
-    grid-template-columns: 1fr 1fr;
-    gap:10px;
+  /* ===== HUD Results（左图下方）===== */
+  .hudResults{
+    left:12px;
+    bottom:12px;
+    width:min(260px, calc(100% - 24px));
+    background:rgba(255,255,255,.62);
+    border:1px solid rgba(15,26,43,.10);
+    backdrop-filter: blur(10px);
   }
+  .hudResults .r3, .hudResults .r2{
+    display:flex; align-items:baseline; gap:8px; flex-wrap:wrap;
+  }
+  .hudResults .r2{ margin-top:6px; }
+  .hudResults .lab{ font-size:12px; color:#445; opacity:.85; min-width:22px; }
+  .hudResults .val{ font-size:14px; font-weight:800; color:#0f1a2b; margin-right:10px; }
 
-  .status{
-    margin-top:10px;
-    padding:10px 12px;
-    border-radius:12px;
-    border:1px solid var(--border);
-    background:#fff;
-    font-size:13px;
-    color:#2a3246;
+  /* ===== 介质按钮（浮贴）===== */
+  .matBtn{
+    position:absolute;
+    left:14px;
+    z-index:6;
     display:flex;
     gap:10px;
-    align-items:flex-start;
-    line-height:1.45;
+    flex-wrap:wrap;
+    pointer-events:auto;
   }
-  .status .badge{
+  .matBtn.mat1{ top: calc(var(--interfaceY, 52%) - 58px); }
+  .matBtn.mat2{ top: calc(var(--interfaceY, 52%) + 16px); }
+
+  .matBtn.mat1 .btnPill{
+    background: linear-gradient(180deg, rgba(238,244,255,.90), rgba(255,255,255,.55));
+    border-color: rgba(46,86,184,.28);
+    color: #0a2a78;
+  }
+  .matBtn.mat2 .btnPill{
+    background: linear-gradient(180deg, rgba(255,244,227,.92), rgba(255,255,255,.55));
+    border-color: rgba(194,122,0,.30);
+    color: #7a4a00;
+  }
+  .matBtn .btnPill span{ color: inherit; }
+
+  .btnPill{
+    height:42px;
+    padding:0 14px;
+    border-radius:999px;
+    font-weight:800;
+  }
+
+  /* 入射设置卡片（你当前已精简的版本） */
+  .hudInc{
+    position:absolute;
+    left:12px;
+    top:12px;
+    width:min(220px, calc(100vw - 24px));
+    z-index:5;
+    border-radius:12px;
+  }
+  .hudInc .hudHead{ padding:6px 10px; }
+  .hudInc .hudBody{ padding:8px 10px; }
+  .hudInc .row{ grid-template-columns: 84px 1fr; gap:8px; margin:6px 0; }
+  .hudInc label{ font-size:12px; }
+  .hudInc select, .hudInc input[type="number"]{
+    height:30px;
+    border-radius:10px;
+    font-size:12px;
+  }
+  .hudInc .hint{
+    margin-top:6px;
+    font-size:11px;
+    color:#44506a;
+    opacity:.9;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  /* 弹窗 */
+  .modalOverlay{
+    position:fixed;
+    inset:0;
+    background:rgba(15,26,43,.35);
+    z-index:50;
+  }
+  .modal{
+    position:fixed;
+    left:50%;
+    top:50%;
+    transform:translate(-50%,-50%);
+    width:min(520px, calc(100vw - 28px));
+    background:rgba(255,255,255,.92);
+    border:1px solid rgba(15,26,43,.12);
+    border-radius:18px;
+    box-shadow:0 20px 60px rgba(0,0,0,.22);
+    z-index:60;
+    overflow:hidden;
+  }
+  .modalTop{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:14px 16px;
+    border-bottom:1px solid rgba(15,26,43,.08);
+    font-weight:900;
+  }
+  .modalTitle{ font-size:14px; color:#0f1a2b; }
+  .modalClose{
+    width:34px; height:34px;
+    border-radius:10px;
+    border:1px solid rgba(15,26,43,.10);
+    background:rgba(255,255,255,.7);
+    cursor:pointer;
+    font-size:18px;
+    line-height:1;
+  }
+  .modalBody{ padding:14px 16px 16px; }
+  .smallNote{ margin-top:10px; font-size:12px; color:#44506a; }
+
+  @media (max-width: 560px){
+    .hudInc{ top:60px; width:min(300px, calc(100vw - 28px)); }
+    .matBtn{ gap:8px; }
+    .btnPill{ height:40px; padding:0 12px; }
+  }
+
+  /* ===== 临界角面板（与整体统一）===== */
+  .critEq{
+    margin-top:4px;
+    display:flex;
+    align-items:center;
+    justify-content:flex-start;
+    gap:8px;
+    flex-wrap:wrap;
+    font-size:18px;
+    font-weight:900;
+    color:#111a2e;
+    line-height:1.35;
+  }
+  .critEq .sym{ min-width:34px; }
+  .critEq .fn{ letter-spacing:.2px; }
+  .critEq .paren{ font-weight:900; opacity:.9; }
+  .critEq .frac{ min-width:96px; }
+  .critNote{
+    margin-top:10px;
+    padding:10px 12px;
+    border:1px dashed #dfe6fb;
+    border-radius:12px;
     background:#fbfcff;
-    flex:0 0 auto;
+    color:#44506a;
+    font-size:12px;
+    line-height:1.7;
+    font-weight:700;
   }
+
+
+  .symbolList{
+    background:#fff;
+    border:1px dashed #dfe6fb;
+    border-radius:12px;
+    padding:10px 12px;
+    line-height:1.8;
+    color:#1b2333;
+    font-size:13px;
+    font-weight:700;
+  }
+  .symbolList .line{
+    display:block;
+    margin:4px 0;
+    color:#233055;
+  }
+
+  /* ===== 响应式：云创/小窗口自适应 =====
+     思路：小屏下缩放“UI 卡片/按钮/结果面板”，避免遮挡与比例失衡
+  */
+  :root{ --uiScale: 1; }
+
+  /* 这些属于 UI 叠层元素：缩放不影响画布坐标 */
+  .incCard, .hud, .hudActions, .matBadge { transform-origin: left top; }
+
+  @media (max-width: 1100px){
+    :root{ --uiScale: .92; }
+  }
+  @media (max-width: 900px){
+    :root{ --uiScale: .85; }
+  }
+  @media (max-width: 720px){
+    :root{ --uiScale: .78; }
+  }
+  @media (max-width: 620px){
+    :root{ --uiScale: .72; }
+  }
+
+  .incCard{ transform: scale(var(--uiScale)); }
+  .hud{ transform: scale(var(--uiScale)); transform-origin: left bottom; }
+  .hudActions{ transform: scale(var(--uiScale)); transform-origin: right top; }
+  .matBadge{ transform: scale(var(--uiScale)); }
+
+  /* 入射设置卡片宽度随屏幕收敛 */
+  .incCard{
+    max-width: clamp(220px, 34vw, 320px);
+  }
+  .incCard .row{ gap:10px; }
+  .incCard label{ font-size:12px; }
+  .incCard .hint{ font-size:11px; }
+
+  /* 小屏时按钮排布更紧凑，避免右上溢出 */
+  @media (max-width: 720px){
+    .hudActions{ gap:8px; right:12px; top:12px; }
+    .btn{ padding:8px 12px; font-size:12px; }
+  }
+
+
+  /* ===== 弹窗/抽屉也跟随 uiScale 缩放 ===== */
+  .modal{
+    transform: translate(-50%,-50%) scale(var(--uiScale));
+    transform-origin: center;
+  }
+  .drawer{
+    transform: scale(var(--uiScale));
+    transform-origin: right top;
+  }
+
 </style>
 </head>
 
 <body>
 <header>
-  <div class="title">超声波折射教学演示</div>
-  <div></div>
+  <div class="title">超声波斜入射时的反射、折射和波形转换</div>
 </header>
 
 <main>
   <section class="left">
-    <div class="canvasWrap">
-      <canvas id="scene" width="900" height="675"></canvas>
+    <div class="canvasWrap" id="canvasWrap">
+      <canvas id="scene"></canvas>
+
+      <div class="hudActions">
+        <button class="btn" id="btnFormula" type="button">反射 / 折射定律</button>
+        <button class="btn" id="btnCritical" type="button">临界角</button>
+      </div>
+
+      <!-- 介质按钮 -->
+      <div class="matBtn mat1" aria-label="介质1选择按钮">
+        <button class="btn btnPill" id="btnMat1" type="button">介质1：<span id="mat1BtnName">有机玻璃</span></button>
+      </div>
+      <div class="matBtn mat2" aria-label="介质2选择按钮">
+        <button class="btn btnPill" id="btnMat2" type="button">介质2：<span id="mat2BtnName">钢</span></button>
+      </div>
+
+      <!-- 左上：入射波设置 -->
+      <div class="hud hudInc" aria-label="入射波设置">
+        <div class="hudHead">
+          <div class="name">入射波类型设置</div>
+        </div>
+        <div class="hudBody">
+          <div class="row">
+            <label>入射波类型</label>
+            <select id="incType">
+              <option value="L" selected>纵波 L</option>
+              <option value="S">横波 S</option>
+            </select>
+          </div>
+          <div class="row">
+            <label><span id="alphaLabel">入射角 α<sub class="sub">L</sub>（°）</span></label>
+            <input id="alphaInput" type="number" min="0" max="90" step="0.1" value="30" />
+          </div>
+          <div class="hint" id="dragHint">提示：拖动入射波可调整入射角</div>
+        </div>
+      </div>
+
+      <!-- 弹窗遮罩 -->
+      <div class="modalOverlay" id="modalOverlay" hidden></div>
+
+      <!-- 介质1弹窗 -->
+      <div class="modal" id="modalMat1" hidden aria-label="介质1设置">
+        <div class="modalTop">
+          <div class="modalTitle">介质1（入射 / 反射区）</div>
+          <button class="modalClose" type="button" data-close="1">×</button>
+        </div>
+        <div class="modalBody">
+          <div class="row">
+            <label>材料</label>
+            <select id="mat1"></select>
+          </div>
+          <div class="kv">
+            <div class="box">
+              <div class="k">纵波声速 c<sub class="sub">L1</sub></div>
+              <div class="v"><span id="cL1">—</span> <span class="unit">m/s</span></div>
+            </div>
+            <div class="box">
+              <div class="k">横波声速 c<sub class="sub">S1</sub></div>
+              <div class="v"><span id="cS1">—</span> <span class="unit">m/s</span></div>
+            </div>
+          </div>
+          <div class="smallNote" id="mat1Note"></div>
+        </div>
+      </div>
+
+      <!-- 介质2弹窗 -->
+      <div class="modal" id="modalMat2" hidden aria-label="介质2设置">
+        <div class="modalTop">
+          <div class="modalTitle">介质2（折射区）</div>
+          <button class="modalClose" type="button" data-close="1">×</button>
+        </div>
+        <div class="modalBody">
+          <div class="row">
+            <label>材料</label>
+            <select id="mat2"></select>
+          </div>
+          <div class="kv">
+            <div class="box">
+              <div class="k">纵波声速 c<sub class="sub">L2</sub></div>
+              <div class="v"><span id="cL2">—</span> <span class="unit">m/s</span></div>
+            </div>
+            <div class="box">
+              <div class="k">横波声速 c<sub class="sub">S2</sub></div>
+              <div class="v"><span id="cS2">—</span> <span class="unit">m/s</span></div>
+            </div>
+          </div>
+          <div class="smallNote" id="mat2Note"></div>
+        </div>
+      </div>
+
+      <!-- 关键结果 HUD -->
+      <div class="hud hudResults" aria-label="关键计算结果">
+        <div class="hudBody">
+          <div class="r3">
+            <span class="lab">α<sub class="sub">1</sub></span><span class="val" id="alpha1Out">—</span>
+            <span class="lab">α<sub class="sub">2</sub></span><span class="val" id="alpha2Out">—</span>
+            <span class="lab">α<sub class="sub">3</sub></span><span class="val" id="alpha3Out">—</span>
+          </div>
+          <div class="r2">
+            <span class="lab">γ<sub class="sub">L</sub></span><span class="val" id="gammaLOut">—</span>
+            <span class="lab">γ<sub class="sub">S</sub></span><span class="val" id="gammaSOut">—</span>
+          </div>
+          <div class="r2">
+            <span class="lab">β<sub class="sub">L</sub></span><span class="val" id="betaLOut">—</span>
+            <span class="lab">β<sub class="sub">S</sub></span><span class="val" id="betaSOut">—</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 抽屉 -->
+      <div class="drawer" id="drawer" aria-label="反射 / 折射定律面板">
+        <div class="drawerTop">
+          <div class="title">反射 / 折射定律</div>
+          <button class="drawerClose" id="btnCloseDrawer" type="button">关闭</button>
+        </div>
+
+        <div class="grid">
+          <div class="card">
+            <h3>反射定律</h3>
+            <div class="bigEq" id="reflectEq"></div>
+            <div class="legend" id="reflectLegend"></div>
+          </div>
+
+          <div class="card">
+            <h3>折射定律</h3>
+            <div class="bigEq" id="refractEq"></div>
+            <div class="legend" id="refractLegend"></div>
+          </div>
+
+          <div class="card">
+            <h3>参数含义</h3>
+            <div class="symbolList" id="symbolLegend"></div>
+          </div>
+        </div>
+      </div>
+      <!-- 临界角抽屉 -->
+      <div class="drawer" id="drawerCritical" aria-label="临界角面板">
+        <div class="drawerTop">
+          <div class="title">临界角</div>
+          <button class="drawerClose" id="btnCloseCritical" type="button">关闭</button>
+        </div>
+
+        <div class="grid">
+          <div class="card">
+            <h3>第一临界角</h3>
+            <div class="critEq">
+              <span class="sym">α<sub class="sub">1</sub></span>
+              <span class="eq">=</span>
+              <span class="fn">arcsin</span>
+              <span class="paren">(</span>
+              <span class="frac">
+                <span class="top">c<sub class="sub">L1</sub></span>
+                <span class="bar"></span>
+                <span class="bot">c<sub class="sub">L2</sub></span>
+              </span>
+              <span class="paren">)</span>
+            </div>
+            <div class="critNote">
+              若 c<sub class="sub">L2</sub> &gt; c<sub class="sub">L1</sub>，则 β<sub class="sub">L</sub>=90° 对应的纵波入射角称为第一临界角，用 α<sub class="sub">1</sub> 表示。
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>第二临界角</h3>
+            <div class="critEq">
+              <span class="sym">α<sub class="sub">2</sub></span>
+              <span class="eq">=</span>
+              <span class="fn">arcsin</span>
+              <span class="paren">(</span>
+              <span class="frac">
+                <span class="top">c<sub class="sub">L1</sub></span>
+                <span class="bar"></span>
+                <span class="bot">c<sub class="sub">S2</sub></span>
+              </span>
+              <span class="paren">)</span>
+            </div>
+            <div class="critNote">
+              若 c<sub class="sub">S2</sub> &gt; c<sub class="sub">L1</sub>，则 β<sub class="sub">S</sub>=90° 对应的纵波入射角称为第二临界角，用 α<sub class="sub">2</sub> 表示。
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>第三临界角</h3>
+            <div class="critEq">
+              <span class="sym">α<sub class="sub">3</sub></span>
+              <span class="eq">=</span>
+              <span class="fn">arcsin</span>
+              <span class="paren">(</span>
+              <span class="frac">
+                <span class="top">c<sub class="sub">S1</sub></span>
+                <span class="bar"></span>
+                <span class="bot">c<sub class="sub">L1</sub></span>
+              </span>
+              <span class="paren">)</span>
+            </div>
+            <div class="critNote">
+              当 γ<sub class="sub">L</sub>=90° 时，对应的横波入射角称为第三临界角，用 α<sub class="sub">3</sub> 表示。
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <script src="physics.js"></script>
+      <script src="inline.js"></script>
     </div>
   </section>
-
-  <aside class="right">
-    <div class="grid">
-
-      <div class="card">
-        <h3>材料与声速</h3>
-
-        <div class="split2">
-          <div class="medium m1">
-            <div class="mh">
-              <div class="name">介质1（入射区）</div>
-              <div class="badge">C1</div>
-            </div>
-
-            <div class="row">
-              <label>材料</label>
-              <select id="mat1">
-                <option>钢</option>
-                <option>铝</option>
-                <option selected>有机玻璃</option>
-                <option>水</option>
-                <option>混凝土</option>
-              </select>
-            </div>
-
-            <div class="kv">
-              <div class="box">
-                <div class="k">纵波声速（用于 C1）</div>
-                <div class="v"><span id="cL1">—</span> <span class="unit">m/s</span></div>
-              </div>
-              <div class="box">
-                <div class="k">横波声速（用于 C1）</div>
-                <div class="v"><span id="cS1">—</span> <span class="unit">m/s</span></div>
-              </div>
-            </div>
-          </div>
-
-          <div class="medium m2">
-            <div class="mh">
-              <div class="name">介质2（折射区）</div>
-              <div class="badge">C2 / C3</div>
-            </div>
-
-            <div class="row">
-              <label>材料</label>
-              <select id="mat2">
-                <option selected>钢</option>
-                <option>铝</option>
-                <option>有机玻璃</option>
-                <option>混凝土</option>
-              </select>
-            </div>
-
-            <div class="kv">
-              <div class="box">
-                <div class="k">横波声速（C2）</div>
-                <div class="v"><span id="C2">—</span> <span class="unit">m/s</span></div>
-              </div>
-              <div class="box">
-                <div class="k">纵波声速（C3）</div>
-                <div class="v"><span id="C3">—</span> <span class="unit">m/s</span></div>
-              </div>
-            </div>
-
-          </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <h3>入射设置</h3>
-
-        <div class="row">
-          <label>入射波类型</label>
-          <select id="incType">
-            <option selected>纵波 L</option>
-            <option>横波 S</option>
-          </select>
-        </div>
-
-        <div class="row">
-          <label>入射角 ∠1（°）</label>
-          <div class="thetaRow">
-            <input id="thetaRange" type="range" min="0" max="80" step="0.1" value="30" />
-            <input id="thetaInput" type="number" min="0" max="80" step="0.1" value="30" />
-          </div>
-        </div>
-
-        <div style="display:flex; justify-content:space-between; margin-top:2px; font-size:12px; color:var(--muted);">
-          <span>0°</span>
-          <span><b id="thetaShow" style="color:var(--text);">30°</b></span>
-          <span>80°</span>
-        </div>
-      </div>
-
-      <div class="card">
-        <h3>折射定律（Snell）</h3>
-
-        <div class="formulaWrap">
-          <div class="bigEq" aria-label="Snell equation">
-            <span class="frac">
-              <span class="top">sin∠1</span>
-              <span class="bar"></span>
-              <span class="bot">C1</span>
-            </span>
-            <span class="eq">=</span>
-            <span class="frac">
-              <span class="top">sin∠2</span>
-              <span class="bar"></span>
-              <span class="bot">C2</span>
-            </span>
-            <span class="eq">=</span>
-            <span class="frac">
-              <span class="top">sin∠3</span>
-              <span class="bar"></span>
-              <span class="bot">C3</span>
-            </span>
-          </div>
-
-          <div class="legend">
-            <span class="tag1">∠1 / C1：入射波</span>
-            <span class="tag2">∠2 / C2：折射横波</span>
-            <span class="tag3">∠3 / C3：折射纵波</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <h3>临界角</h3>
-        <div class="resultGrid">
-          <div class="box">
-            <div class="k">第一临界角（°）</div>
-            <div class="v"><span id="thetaC1Out">—</span></div>
-          </div>
-          <div class="box">
-            <div class="k">第二临界角（°）</div>
-            <div class="v"><span id="thetaC2Out">—</span></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <h3>折射角结果</h3>
-        <div class="resultGrid">
-          <div class="box">
-            <div class="k">折射横波角 ∠2（°）</div>
-            <div class="v"><span id="theta2Out">—</span></div>
-          </div>
-          <div class="box">
-            <div class="k">折射纵波角 ∠3（°）</div>
-            <div class="v"><span id="theta3Out">—</span></div>
-          </div>
-        </div>
-
-        <div class="status">
-          <span class="badge">状态</span>
-          <span id="statusText">—</span>
-        </div>
-      </div>
-
-    </div>
-  </aside>
 </main>
-
-<script src="physics.js"></script>
-
-<script>
-/* ===== 数据表 ===== */
-const SPEED_TABLE = {
-  "钢": { cL: 5900, cS: 3230 },
-  "铝": { cL: 6320, cS: 3130 },
-  "有机玻璃": { cL: 2730, cS: 1340 },
-  "水": { cL: 1480, cS: 0 },
-  "混凝土": { cL: 3200, cS: 1800 }
-};
-
-const el = (id)=>document.getElementById(id);
-const clamp = (x,a,b)=>Math.max(a,Math.min(b,x));
-const fmt = (x)=> (x==null || !Number.isFinite(x)) ? "—" : (Math.round(x*10)/10).toString();
-
-/* ===== 统一角度入口（滑块/输入/拖拽都走这里） ===== */
-let suppressThetaEvents = false;
-function setTheta(thetaDeg){
-  const t = clamp(Number(thetaDeg), 0, 80);
-  suppressThetaEvents = true;
-  el("thetaRange").value = String(t);
-  el("thetaInput").value = String(t);
-  el("thetaShow").textContent = t + "°";
-  suppressThetaEvents = false;
-  computeAndRender();
-}
-
-function getParams(){
-  const mat1 = el("mat1").value;
-  const mat2 = el("mat2").value;
-  const s1 = SPEED_TABLE[mat1] || {cL:null, cS:null};
-  const s2 = SPEED_TABLE[mat2] || {cL:null, cS:null};
-
-  const incType = el("incType").value; // "纵波 L" | "横波 S"
-  const theta1Deg = Number(el("thetaRange").value);
-
-  const C1 = incType.includes("纵波") ? s1.cL : s1.cS;
-  const C2 = s2.cS; // 折射横波
-  const C3 = s2.cL; // 折射纵波
-
-  return { mat1, mat2, s1, s2, incType, theta1Deg, C1, C2, C3 };
-}
-
-function setMediumSpeedsUI(p){
-  el("cL1").textContent = p.s1.cL ?? "—";
-  el("cS1").textContent = p.s1.cS ?? "—";
-  el("C2").textContent  = p.s2.cS ?? "—";
-  el("C3").textContent  = p.s2.cL ?? "—";
-}
-
-function buildStatusText(res, p){
-  const lines = [];
-
-  const c1 = p.C1, c2 = p.C2, c3 = p.C3;
-  const t1 = res.theta1;
-
-  // 1) 入射信息
-  const incName = p.incType.includes("横波") ? "入射横波（S）" : "入射纵波（L）";
-  lines.push(`${incName}，入射角 ∠1 = ${fmt(t1)}°。`);
-
-  // 2) 临界角是否存在（分别对应C2/C3分支）
-  const crit = [];
-  if (res.thetaC2 != null) crit.push({v:res.thetaC2, tag:"对应折射横波（C2）"});
-  if (res.thetaC3 != null) crit.push({v:res.thetaC3, tag:"对应折射纵波（C3）"});
-  crit.sort((a,b)=>a.v-b.v);
-
-  if (crit.length === 0){
-    // 解释“为什么没有临界角”
-    // sinθc = C1/Cj；若 C1>Cj 则 C1/Cj>1，不存在临界角（该分支不会出现“沿界面临界”）
-    const reasons = [];
-    if (Number.isFinite(c1) && Number.isFinite(c2) && c1>0 && c2>0 && (c1/c2)>1) reasons.push("对折射横波分支：C1/C2 > 1");
-    if (Number.isFinite(c1) && Number.isFinite(c3) && c1>0 && c3>0 && (c1/c3)>1) reasons.push("对折射纵波分支：C1/C3 > 1");
-    if (reasons.length){
-      lines.push(`当前组合下无临界角（${reasons.join("；")}），因此不会出现“临界折射沿界面传播”的情形。`);
-    }else{
-      lines.push(`当前组合下无临界角（声速比不满足临界条件），因此不会出现“临界折射沿界面传播”的情形。`);
-    }
-  }else{
-    // 只用一句话点明临界含义（不写公式）
-    const parts = crit.map((x)=>`${fmt(x.v)}°（${x.tag}）`);
-    lines.push(`存在临界角：${parts.join("；")}。当 ∠1 增大超过对应临界角时，该折射波将不再以体波形式进入介质2。`);
-  }
-
-  // 3) 折射波状态（存在/临界/消失）
-  function waveExplain(mode, which){
-    if (mode === "real") return `${which}正常折射进入介质2。`;
-    if (mode === "critical") return `${which}处于临界状态（沿界面传播，折射角接近 90°）。`;
-    if (mode === "evanescent") return `${which}在介质2中“消失”：入射角超过该分支临界条件，仅保留界面附近的衰减波（远场看不到体波折射）。`;
-    return `${which}状态不可用（声速或参数无效）。`;
-  }
-  lines.push(waveExplain(res.mode2, "折射横波（∠2）"));
-  lines.push(waveExplain(res.mode3, "折射纵波（∠3）"));
-
-  return lines.join("<br>");
-}
-
-/* ===== 计算 + UI输出 + 触发绘制 ===== */
-let LAST_RES = null;
-let LAST_PARAMS = null;
-
-function computeAndRender(){
-  const p = getParams();
-  setMediumSpeedsUI(p);
-
-  const res = UltrasonicPhysics.computeRefraction({
-    theta1Deg: p.theta1Deg,
-    C1: p.C1,
-    C2: p.C2,
-    C3: p.C3
-  });
-
-  // 输出折射角
-  el("theta2Out").textContent = fmt(res.theta2);
-  el("theta3Out").textContent = fmt(res.theta3);
-
-  // 输出临界角：按数值从小到大显示为“第一/第二”
-  const critVals = [res.thetaC2, res.thetaC3].filter(v => v != null && Number.isFinite(v)).sort((a,b)=>a-b);
-  el("thetaC1Out").textContent = critVals[0] != null ? fmt(critVals[0]) : "—";
-  el("thetaC2Out").textContent = critVals[1] != null ? fmt(critVals[1]) : "—";
-
-  // 状态解释（更详细）
-  el("statusText").innerHTML = buildStatusText(res, p);
-
-  LAST_RES = res;
-  LAST_PARAMS = p;
-}
-
-/* ===== 入射角：滑块/输入框双向联动 ===== */
-el("thetaRange").addEventListener("input", ()=>{
-  if (suppressThetaEvents) return;
-  setTheta(el("thetaRange").value);
-});
-el("thetaInput").addEventListener("change", ()=>{
-  if (suppressThetaEvents) return;
-  setTheta(el("thetaInput").value);
-});
-el("thetaInput").addEventListener("keydown", (e)=>{
-  if (e.key === "Enter"){
-    e.preventDefault();
-    setTheta(el("thetaInput").value);
-  }
-});
-
-/* 其它控件变化 */
-el("mat1").addEventListener("change", computeAndRender);
-el("mat2").addEventListener("change", computeAndRender);
-el("incType").addEventListener("change", computeAndRender);
-
-/* ===== Canvas 绘制（含边界截断 + 科技感“流动蚂蚁线”） ===== */
-const canvas = el("scene");
-const ctx = canvas.getContext("2d");
-const W = canvas.width, H = canvas.height;
-const interfaceY = Math.round(H * 0.52);
-const px = Math.round(W * 0.50), py = interfaceY;
-
-const CSS = getComputedStyle(document.documentElement);
-const COLOR = {
-  m1: CSS.getPropertyValue("--m1").trim(),
-  m2: CSS.getPropertyValue("--m2").trim(),
-  iface: CSS.getPropertyValue("--m1line").trim(),
-  normal: CSS.getPropertyValue("--normal").trim(),
-  incL: CSS.getPropertyValue("--incL").trim(),
-  incS: CSS.getPropertyValue("--incS").trim(),
-  L: CSS.getPropertyValue("--L").trim(),
-  S: CSS.getPropertyValue("--S").trim(),
-};
-
-function drawDashedLine(x1,y1,x2,y2,color){
-  ctx.save();
-  ctx.setLineDash([8,7]);
-  ctx.strokeStyle=color;
-  ctx.lineWidth=2;
-  ctx.beginPath();
-  ctx.moveTo(x1,y1); ctx.lineTo(x2,y2);
-  ctx.stroke();
-  ctx.setLineDash([]);
-  ctx.restore();
-}
-
-function roundRect(x,y,w,h,r){
-  ctx.beginPath();
-  ctx.moveTo(x+r,y);
-  ctx.arcTo(x+w,y,x+w,y+h,r);
-  ctx.arcTo(x+w,y+h,x,y+h,r);
-  ctx.arcTo(x,y+h,x,y,r);
-  ctx.arcTo(x,y,x+w,y,r);
-  ctx.closePath();
-}
-
-function pillLabel(text, x, y, tint){
-  ctx.save();
-  ctx.font = "16px Microsoft YaHei";
-  const padX=14, h=32;
-  const w = ctx.measureText(text).width + padX*2;
-
-  ctx.shadowColor = "rgba(0,0,0,0.15)";
-  ctx.shadowBlur = 2;
-  ctx.shadowOffsetY = 4;
-
-  ctx.fillStyle = "rgba(255,255,255,0.92)";
-  roundRect(x,y,w,h,16); ctx.fill();
-
-  ctx.shadowColor = "transparent";
-  ctx.strokeStyle = "rgba(60,80,130,0.18)";
-  ctx.lineWidth=1;
-  roundRect(x,y,w,h,16); ctx.stroke();
-
-  ctx.fillStyle = tint;
-  ctx.textBaseline="middle";
-  ctx.fillText(text, x+padX, y+h/2);
-  ctx.restore();
-}
-
-function labelText(text, x, y, color){
-  ctx.save();
-  ctx.font="22px Microsoft YaHei";
-  ctx.lineWidth=6;
-  ctx.strokeStyle="rgba(255,255,255,0.92)";
-  ctx.strokeText(text, x, y);
-  ctx.fillStyle=color;
-  ctx.fillText(text, x, y);
-  ctx.restore();
-}
-
-/* 角度弧：与法线夹角（锐角），自动放在“波线与法线之间”的一侧 */
-function drawAcuteAngle(label, rayAngle, radius, mode, color){
-  const base = (mode==="up") ? -Math.PI/2 : Math.PI/2;
-
-  let d = rayAngle - base;
-  while (d <= -Math.PI) d += 2*Math.PI;
-  while (d >  Math.PI) d -= 2*Math.PI;
-  const absd = Math.min(Math.abs(d), Math.PI - Math.abs(d));
-
-  const side = (d >= 0) ? "right" : "left";
-  const start = base;
-  const end = (side==="left") ? base - absd : base + absd;
-
-  ctx.save();
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.arc(px, py, radius, start, end, side==="left");
-  ctx.stroke();
-
-  ctx.font="18px Microsoft YaHei";
-  ctx.fillStyle = color;
-  const mid = (start+end)/2;
-  const tx = px + (radius + 18) * Math.cos(mid);
-  const ty = py + (radius + 18) * Math.sin(mid);
-
-  ctx.lineWidth=5;
-  ctx.strokeStyle="rgba(255,255,255,0.92)";
-  ctx.strokeText(label, tx-10, ty+6);
-  ctx.fillText(label, tx-10, ty+6);
-  ctx.restore();
-}
-
-/* 向量：与法线夹角 thetaDeg（锐角）
-   upLeft：上半区入射（往上，向左偏）
-   downRight：下半区折射（往下，向右偏）
-*/
-function vecFromNormal(thetaDeg, mode){
-  const t = thetaDeg * Math.PI / 180;
-  if(mode === "upLeft"){
-    return { x: -Math.sin(t), y: -Math.cos(t) };
-  }
-  return { x: Math.sin(t), y: Math.cos(t) };
-}
-
-/* 射线在矩形内的最大长度（向下） */
-function fitLenToRectDown(px, py, vx, vy, rect, margin=26){
-  const eps = 1e-9;
-  if (vy <= eps) return 0;
-  let tMax = Infinity;
-
-  tMax = Math.min(tMax, (rect.bottom - margin - py) / vy);
-  if (vx > eps)  tMax = Math.min(tMax, (rect.right - margin - px) / vx);
-  if (vx < -eps) tMax = Math.min(tMax, (rect.left + margin - px) / vx);
-
-  if (!Number.isFinite(tMax) || tMax < 0) return 0;
-  return tMax;
-}
-
-/* 射线在矩形内的最大长度（向上） */
-function fitLenToRectUp(px, py, vx, vy, rect, margin=26){
-  const eps = 1e-9;
-  if (vy >= -eps) return 0;
-  let tMax = Infinity;
-
-  tMax = Math.min(tMax, (rect.top + margin - py) / vy); // vy<0 -> 正
-  if (vx > eps)  tMax = Math.min(tMax, (rect.right - margin - px) / vx);
-  if (vx < -eps) tMax = Math.min(tMax, (rect.left + margin - px) / vx);
-
-  if (!Number.isFinite(tMax) || tMax < 0) return 0;
-  return tMax;
-}
-
-/* 科技感：实体线 + 光晕 + 动态蚂蚁线叠层 */
-/* 科技感：实体线 + 光晕 + 动态蚂蚁线叠层 */
-function drawArrowGlow(x1,y1,x2,y2,color,coreWidth=6){
-  ctx.save();
-  ctx.lineCap="round";
-  ctx.lineJoin="round";
-
-  // 箭头参数（先算出来，方便用箭头基点截断线段）
-  const head = 26;
-  const ang  = Math.atan2(y2 - y1, x2 - x1);
-
-  // 箭头基点：线段终点应该停在这里，而不是停在箭头尖端(x2,y2)
-  const bx = x2 - head * Math.cos(ang);
-  const by = y2 - head * Math.sin(ang);
-
-  // 光晕层（画到基点）
-  ctx.globalAlpha = 0.1;
-  ctx.strokeStyle = color;
-  ctx.lineWidth = coreWidth + 3;
-  ctx.beginPath();
-  ctx.moveTo(x1,y1); ctx.lineTo(bx,by);
-  ctx.stroke();
-
-  // 实体层（画到基点）
-  ctx.globalAlpha = 1;
-  ctx.strokeStyle = color;
-  ctx.lineWidth = coreWidth;
-  ctx.beginPath();
-  ctx.moveTo(x1,y1); ctx.lineTo(bx,by);
-  ctx.stroke();
-
-  // 箭头（尖端仍在 x2,y2）
-  ctx.fillStyle=color;
-  ctx.beginPath();
-  ctx.moveTo(x2,y2);
-  ctx.lineTo(x2-head*Math.cos(ang-Math.PI/7), y2-head*Math.sin(ang-Math.PI/7));
-  ctx.lineTo(x2-head*Math.cos(ang+Math.PI/7), y2-head*Math.sin(ang+Math.PI/7));
-  ctx.closePath();
-  ctx.fill();
-
-  ctx.restore();
-}
-
-
-function drawMarchingOverlay(x1,y1,x2,y2,color,offset){
-  ctx.save();
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 3;
-  ctx.lineCap="round";
-  ctx.globalAlpha = 1;
-  ctx.shadowColor = color;
-  ctx.shadowBlur = 0;
-
-  ctx.setLineDash([10,10]);
-  ctx.lineDashOffset = -offset;
-
-  ctx.beginPath();
-  // 向后缩短一点，避免覆盖箭头
-const dx = x2 - x1;
-const dy = y2 - y1;
-const len = Math.hypot(dx, dy);
-const cut = 24;   // 缩短像素（可调 18~30）
-
-const ux = dx / len;
-const uy = dy / len;
-
-const ex = x2 - ux * cut;
-const ey = y2 - uy * cut;
-
-ctx.moveTo(x1, y1);
-ctx.lineTo(ex, ey);
-
-  ctx.stroke();
-
-  ctx.setLineDash([]);
-  ctx.shadowBlur = 0;
-  ctx.restore();
-}
-
-/* 记录入射线段（用于拖拽命中检测） */
-let INC_SEG = null;
-
-/* 绘制：只依赖 LAST_RES/LAST_PARAMS + 全局偏移 */
-function drawScene(res, p, dashOffset){
-  ctx.clearRect(0,0,W,H);
-
-  // 介质背景
-  ctx.fillStyle = COLOR.m1;
-  ctx.fillRect(0,0,W,interfaceY);
-  ctx.fillStyle = COLOR.m2;
-  ctx.fillRect(0,interfaceY,W,H-interfaceY);
-
-  // 界面线
-  ctx.strokeStyle = "#1b2b6a";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(0, interfaceY);
-  ctx.lineTo(W, interfaceY);
-  ctx.stroke();
-
-  // 法线
-  drawDashedLine(px, py-320, px, py+320, COLOR.normal);
-
-  // 左侧标签：必须与右侧材料一致
-  pillLabel(p.mat1, 38, interfaceY-92, "#1b2b6a");
-  pillLabel(p.mat2, 38, interfaceY+22, "#1b2b6a");
-
-  const rectM1 = { left:0, right:W, top:0, bottom:interfaceY };
-  const rectM2 = { left:0, right:W, top:interfaceY, bottom:H };
-
-  // 入射线（根据入射类型决定颜色和文字）
-  const isIncS = p.incType.includes("横波");
-  const incColor = isIncS ? COLOR.incS : COLOR.incL;
-  const incLabel = isIncS ? "横波S" : "纵波L";
-
-  const incDir = vecFromNormal(res.theta1, "upLeft");
-  const incLen = fitLenToRectUp(px, py, incDir.x, incDir.y, rectM1, 26);
-  const incStart = { x: px + incLen*incDir.x, y: py + incLen*incDir.y };
-
-  drawArrowGlow(incStart.x, incStart.y, px, py, incColor, 6);
-  drawMarchingOverlay(incStart.x, incStart.y, px, py, "rgba(255,255,255,0.92)", dashOffset);
-
-  // 入射标签位置：稍微偏离线
-  labelText(incLabel, incStart.x + 18, incStart.y + 38, incColor);
-
-  // 保存入射线段用于命中检测
-  INC_SEG = { x1:incStart.x, y1:incStart.y, x2:px, y2:py };
-
-  // 折射横波（∠2）
-  let trS = null;
-  if (res.theta2 != null && res.mode2 !== "evanescent" && res.mode2 !== "invalid"){
-    const d2 = vecFromNormal(res.theta2, "downRight");
-    const len2 = fitLenToRectDown(px, py, d2.x, d2.y, rectM2, 26);
-    trS = { x: px + len2*d2.x, y: py + len2*d2.y };
-
-    drawArrowGlow(px, py, trS.x, trS.y, COLOR.S, 6);
-    drawMarchingOverlay(px, py, trS.x, trS.y, "rgba(255,255,255,0.90)", dashOffset);
-
-    labelText("横波S", trS.x - 120, trS.y - 8, COLOR.S);
-  }
-
-  // 折射纵波（∠3）
-  let trL = null;
-  if (res.theta3 != null && res.mode3 !== "evanescent" && res.mode3 !== "invalid"){
-    const d3 = vecFromNormal(res.theta3, "downRight");
-    const len3 = fitLenToRectDown(px, py, d3.x, d3.y, rectM2, 26);
-    trL = { x: px + len3*d3.x, y: py + len3*d3.y };
-
-    drawArrowGlow(px, py, trL.x, trL.y, COLOR.L, 6);
-    drawMarchingOverlay(px, py, trL.x, trL.y, "rgba(255,255,255,0.90)", dashOffset);
-
-    labelText("纵波L", trL.x - 110, trL.y + 10, COLOR.L);
-  }
-
-  // 角度弧（与法线夹角的锐角，自动放在波线与法线之间）
-  const angInc = Math.atan2(incStart.y - py, incStart.x - px);
-  drawAcuteAngle("∠1", angInc, 62, "up", "#111111");
-
-  if (trS){
-    const angTrS = Math.atan2(trS.y - py, trS.x - px);
-    drawAcuteAngle("∠2", angTrS, 78, "down", COLOR.S);
-  }
-  if (trL){
-    const angTrL = Math.atan2(trL.y - py, trL.x - px);
-    drawAcuteAngle("∠3", angTrL, 104, "down", COLOR.L);
-  }
-}
-
-/* ===== 动画循环（只推进蚂蚁线，不重复算物理） ===== */
-let DASH_OFFSET = 0;
-function animate(){
-  DASH_OFFSET = (DASH_OFFSET + 1.0) % 10000;
-  if (LAST_RES && LAST_PARAMS){
-    drawScene(LAST_RES, LAST_PARAMS, DASH_OFFSET);
-  }
-  requestAnimationFrame(animate);
-}
-
-/* ===== Canvas 拖拽控制入射角（拖动入射线） ===== */
-let dragging = false;
-
-function canvasToLocal(evt){
-  const rect = canvas.getBoundingClientRect();
-  const sx = canvas.width / rect.width;
-  const sy = canvas.height / rect.height;
-  return {
-    x: (evt.clientX - rect.left) * sx,
-    y: (evt.clientY - rect.top) * sy
-  };
-}
-
-function pointToSegDist(px,py, x1,y1,x2,y2){
-  const vx = x2-x1, vy=y2-y1;
-  const wx = px-x1, wy=py-y1;
-  const c1 = wx*vx + wy*vy;
-  if (c1 <= 0) return Math.hypot(px-x1, py-y1);
-  const c2 = vx*vx + vy*vy;
-  if (c2 <= c1) return Math.hypot(px-x2, py-y2);
-  const b = c1 / c2;
-  const bx = x1 + b*vx, by = y1 + b*vy;
-  return Math.hypot(px-bx, py-by);
-}
-
-function solveThetaFromMouse(mx,my){
-  // 只在上半区有效
-  const dx = mx - px;
-  const dy = my - py;
-  if (dy >= -1) return null;
-  // 与法线夹角：theta = atan2(|dx|, -dy)
-  const theta = Math.atan2(Math.abs(dx), -dy) * 180/Math.PI;
-  return clamp(theta, 0, 80);
-}
-
-canvas.addEventListener("mousedown", (e)=>{
-  if (!INC_SEG) return;
-  const m = canvasToLocal(e);
-  const d = pointToSegDist(m.x, m.y, INC_SEG.x1,INC_SEG.y1,INC_SEG.x2,INC_SEG.y2);
-  if (d <= 12){ // 命中阈值
-    dragging = true;
-    canvas.style.cursor = "grabbing";
-  }
-});
-
-window.addEventListener("mouseup", ()=>{
-  dragging = false;
-});
-
-canvas.addEventListener("mouseleave", ()=>{
-  if (!dragging) canvas.style.cursor = "default";
-});
-
-canvas.addEventListener("mousemove", (e)=>{
-  const m = canvasToLocal(e);
-
-  // hover提示
-  if (!dragging && INC_SEG){
-    const d = pointToSegDist(m.x, m.y, INC_SEG.x1,INC_SEG.y1,INC_SEG.x2,INC_SEG.y2);
-    canvas.style.cursor = (d <= 12) ? "grab" : "default";
-  }
-
-  if (!dragging) return;
-
-  const theta = solveThetaFromMouse(m.x, m.y);
-  if (theta == null) return;
-  setTheta(Math.round(theta*10)/10);
-});
-
-/* ===== 初始化 ===== */
-computeAndRender();
-setTheta(30);
-requestAnimationFrame(animate);
-</script>
 </body>
 </html>
